@@ -6,9 +6,9 @@
 Theory & Reinforcement Learning 
 
 ## Team Members
-- Zongyuan C Li (SUNet ID: lizongy1)
-- Annika Sofia Mauro (SUNet ID: amauro)
-- Oleg Roshka (SUNet ID: oros)
+- Zongyuan C Li 
+- Annika Sofia Mauro 
+- Oleg Roshka
 
 ## Motivation
 Neural generative models have displayed commendable performance in NLP tasks. Yet, their resilience against varying and adversarially perturbed inputs remains a pertinent question. As the integration of such models in critical applications escalates, understanding their behaviour and vulnerabilities is of utmost importance. Our project is poised to explore the robustness of the pretrained models, like Mistral-7B, Llama-2-7b, Microsoft/Phi-1_5, BERT, utilising Kolmogorov Complexity.
@@ -28,7 +28,7 @@ Our experiments will:
 - **Attention Dynamics**: Decode attention maps to understand model focus across different input complexities and perturbations.
 - **Robustness Metric Computation**: We aim to construct a conceptual robustness metric that inherently situates the ML model within the realm of complexity, rather than merely applying complexity measures to isolated components. One such attempt is represented by:
 
-\[ \text{(your formula here)} \]
+\[ \text{Robustness Metric} = f(\text{NCD\_input}, \text{NCD\_attention}, \text{NCD\_output}) \]
 
 where \( f \) is a customizable function that can be adapted based on experimental observations and specific nuances of data and model behaviour.
 
