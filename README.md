@@ -28,7 +28,7 @@ Our experiments will:
 - **Attention Dynamics**: Decode attention maps to understand model focus across different input complexities and perturbations.
 - **Robustness Metric Computation**: We aim to construct a conceptual robustness metric that inherently situates the ML model within the realm of complexity, rather than merely applying complexity measures to isolated components. One such attempt is represented by:
 
-\[ \text{Robustness Metric} = f(\text{NCD\_input}, \text{NCD\_attention}, \text{NCD\_output}) \]
+Robustness Metric = f(NCD(input), ΔNCD(attention), NCD(output))
 
 where \( f \) is a customizable function that can be adapted based on experimental observations and specific nuances of data and model behaviour.
 
