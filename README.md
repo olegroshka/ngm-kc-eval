@@ -60,8 +60,9 @@ So far only first staeps have been made:
 
 cd to scripts and from there:
 
+./extract_from_hans.sh -i ../data/hans/heuristics_evaluation_set.jsonl -t lexical_overlap -n temp1 -m 100 -o ../data/hans/lex_over_tmpl1_snt1_100.csv
+
 ./cluster_prompts.sh ../data/hans/lex_over_tmpl1_snt1_100.csv ../data/hans/nid_lex_over_tmpl1_snt1_100.csv ncd 11
 
-./extract_from_hans.sh -i ../data/hans/heuristics_evaluation_set.jsonl -t lexical_overlap -n temp1 -m 100 -o ../data/hans/lex_over_tmpl1_snt1_100.csv
 
 ./run_experiment.sh -i ../data/hans/ncd_11_lex_over_tmpl1_snt1_100.csv -m bert-base-uncased -o bert_base_ncd_11_lex_over_tmpl1_snt1_100.hdf
