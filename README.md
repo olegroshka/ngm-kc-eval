@@ -1,14 +1,9 @@
 # ngm-kc-eval
 
-# CS229 Project: Evaluating Robustness of Neural Generative Models using Kolmogorov Complexity
+# Evaluating Robustness of Neural Generative Models using Kolmogorov Complexity
 
 ## Category
 Theory & Reinforcement Learning 
-
-## Team Members
-- Zongyuan C Li 
-- Annika Sofia Mauro 
-- Oleg Roshka
 
 ## Motivation
 Neural generative models have displayed commendable performance in NLP tasks. Yet, their resilience against varying and adversarially perturbed inputs remains a pertinent question. As the integration of such models in critical applications escalates, understanding their behaviour and vulnerabilities is of utmost importance. Our project is poised to explore the robustness of the pretrained models, like Mistral-7B, Llama-2-7b, Microsoft/Phi-1_5, BERT, utilising Kolmogorov Complexity.
@@ -56,13 +51,43 @@ where \( f \) is a customizable function that can be adapted based on experiment
 
 So far only first staeps have been made:
 
-## How to run:
+## How to run
 
-cd to scripts and from there:
+Ensure you are in the `scripts` directory before running these commands.
 
+### 1. Extract Data from HANS
+Command:
+```bash
 ./extract_from_hans.sh -i ../data/hans/heuristics_evaluation_set.jsonl -t lexical_overlap -n temp1 -m 100 -o ../data/hans/lex_over_tmpl1_snt1_100.csv
+```
+- **Purpose**: Extracts specific templates from the HANS dataset based on the heuristic type (`lexical_overlap` in this case).
+- **Output**: A CSV file with extracted data.
 
+### 2. Cluster Prompts
+Command:
+```bash
 ./cluster_prompts.sh ../data/hans/lex_over_tmpl1_snt1_100.csv ../data/hans/nid_lex_over_tmpl1_snt1_100.csv ncd 11
+```
+- **Purpose**: Clusters the prompts using the specified NID (Normalized Information Distance) method (e.g., `ncd`).
+- **Output**: A CSV file with clustered prompts.
 
-
+### 3. Run the Experiment
+Command:
+```bash
 ./run_experiment.sh -i ../data/hans/ncd_11_lex_over_tmpl1_snt1_100.csv -m bert-base-uncased -o bert_base_ncd_11_lex_over_tmpl1_snt1_100.hdf
+```
+- **Purpose**: Feeds the clustered prompts into a specified model (e.g., `bert-base-uncased`).
+- **Output**: An HDF5 file storing the model outputs and attention scores.
+
+### 4. Run KC Analyzer
+Command:
+```bash
+./run_kc_analyzer.sh -i ../tmp/gpt2_large_ncd_11_lex_over_tmpl1_snt1_100.hdf -k ncd -o ../tmp/gpt2_large_ncd_11_lex_over_tmpl1_snt1_100_results.hdf
+```
+- **Purpose**: Processes the model outputs and attention scores using the KC (Kolmogorov Complexity) Analyzer.
+- **Output**: An HDF5 file with NID values and clustering information.
+
+### 5. Visualization
+- **Purpose**: Generate plots and visualizations based on the results.
+- **Method**: Utilize the `NIDClusterVisualizer` class from the codebase.
+
