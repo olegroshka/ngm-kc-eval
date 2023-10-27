@@ -38,7 +38,11 @@ class NCDCalculator(InformationDistanceCalculator):
         """
         Compute the Normalized Compression Distance (NCD) between two strings x and y.
         """
-        cx, cy, cxy = self.compress(x.encode()), self.compress(y.encode()), self.compress(x.encode() + y.encode())
+        x_bytes = x.encode() if isinstance(x, str) else x
+        y_bytes = y.encode() if isinstance(y, str) else y
+
+        cx, cy, cxy = self.compress(x_bytes), self.compress(y_bytes), self.compress(x_bytes + y_bytes)
+
         return (cxy - min(cx, cy)) / max(cx, cy)
 
     def compute_distance(self, data1, data2):

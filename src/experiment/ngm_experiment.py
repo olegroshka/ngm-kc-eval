@@ -84,7 +84,7 @@ class NGMExperiment:
             # Log start of processing for this prompt
             logging.info(f"Starting processing for prompt_id: {prompt_id}, NID rank: {nid}, cluster: {cluster}")
             try:
-                result = self.infer(prompt_id, prompt_text)
+                result = self.infer(prompt_id, prompt_text, cluster, nid)
                 print("Processed prompt: ", prompt_text)
                 results.append(result)
                 # Log end of processing for this prompt
@@ -95,7 +95,7 @@ class NGMExperiment:
         # Save results to HDF5 format
         self.save_results(results)
 
-    def infer(self, prompt_id, prompt_text):
+    def infer(self, prompt_id, prompt_text, prompt_cluster, prompt_nid):
         # Tokenize input and collect attention scores
         start_time = time.time()
         model_result = self.ngm_model.infer(prompt_text)
@@ -103,6 +103,9 @@ class NGMExperiment:
 
         result = {
             "prompt_id": prompt_id,
+            "prompt_text": prompt_text,
+            "prompt_cluster": prompt_cluster,
+            "prompt_nid": prompt_nid,
             "attention": model_result.attentions,
             "output": model_result.prediction,
             "elapsed_time": elapsed_time
@@ -115,6 +118,9 @@ class NGMExperiment:
             for idx, result in enumerate(results):
                 df = pd.DataFrame({
                     "prompt_id": [result["prompt_id"]],
+                    "prompt_text": [result["prompt_text"]],
+                    "prompt_cluster": [result["prompt_cluster"]],
+                    "prompt_nid": [result["prompt_nid"]],
                     "output": [result["output"]],
                     "elapsed_time": [result["elapsed_time"]]
                 })
