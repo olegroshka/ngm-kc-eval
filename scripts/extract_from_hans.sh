@@ -39,6 +39,8 @@ while getopts ":i:t:n:m:o:" opt; do
   esac
 done
 
+export PYTHONPATH=$PYTHONPATH:../
+
 # Ensure all required arguments are provided
 if [ -z "$HEURISTIC_TYPE" ] || [ -z "$TEMPLATE_NAME" ] || [ -z "$MAX_PROMPTS" ]; then
     echo "Error: Missing arguments."

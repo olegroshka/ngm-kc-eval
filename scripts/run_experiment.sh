@@ -33,6 +33,8 @@ while getopts ":i:m:o:" opt; do
   esac
 done
 
+export PYTHONPATH=$PYTHONPATH:../
+
 # Ensure all arguments are provided
 if [ -z "$INPUT_FILE" ] || [ -z "$MODEL_NAME" ] || [ -z "$OUTPUT_FILE" ]; then
     echo "Error: Missing arguments."
@@ -46,8 +48,13 @@ START_TIME=$(date +%s)
 python ../src/experiment/ngm_experiment.py --input_file "$INPUT_FILE" --model_name "$MODEL_NAME" --output_file "$OUTPUT_FILE"
 
 # Compute elapsed time
-END_TIME=$(date +%s)ls
+END_TIME=$(date +%s)
 ELAPSED_TIME=$((END_TIME - START_TIME))
 
+# Calculate hours, minutes, and seconds
+HOURS=$((ELAPSED_TIME / 3600))
+MINUTES=$(((ELAPSED_TIME / 60) % 60))
+SECONDS=$((ELAPSED_TIME % 60))
+
 echo "Experiment completed successfully!"
-echo "Time elapsed: $ELAPSED_TIME seconds"
+echo "Elapsed time: $HOURS hours, $MINUTES minutes, $SECONDS seconds"

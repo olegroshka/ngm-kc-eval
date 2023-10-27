@@ -182,3 +182,5 @@ pyrightconfig.json
 /.idea/vcs.xml
 /.idea/workspace.xml
 /unnamed.patch
+/tmp/
+/logs/
