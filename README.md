@@ -52,3 +52,17 @@ where \( f \) is a customizable function that can be adapted based on experiment
 5. [Language Models are Unsupervised Multitask Learners by A. Radford, J. Wu, R. Child, D. Luan, D. Amodei, and I. Sutskever](https://openai.com/blog/better-language-models/)
 6. [Explaining and Harnessing Adversarial Examples by I. Goodfellow, J. Shlens, and C. Szegedy](https://arxiv.org/abs/1412.6572)
 
+
+
+So far only first staeps have been made:
+
+## How to run:
+
+cd to scripts and from there:
+
+./extract_from_hans.sh -i ../data/hans/heuristics_evaluation_set.jsonl -t lexical_overlap -n temp1 -m 100 -o ../data/hans/lex_over_tmpl1_snt1_100.csv
+
+./cluster_prompts.sh ../data/hans/lex_over_tmpl1_snt1_100.csv ../data/hans/nid_lex_over_tmpl1_snt1_100.csv ncd 11
+
+
+./run_experiment.sh -i ../data/hans/ncd_11_lex_over_tmpl1_snt1_100.csv -m bert-base-uncased -o bert_base_ncd_11_lex_over_tmpl1_snt1_100.hdf
