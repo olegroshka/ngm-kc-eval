@@ -2,9 +2,6 @@
 
 # Evaluating Robustness of Neural Generative Models using Kolmogorov Complexity
 
-## Category
-Theory & Reinforcement Learning 
-
 ## Motivation
 Neural generative models have displayed commendable performance in NLP tasks. Yet, their resilience against varying and adversarially perturbed inputs remains a pertinent question. As the integration of such models in critical applications escalates, understanding their behaviour and vulnerabilities is of utmost importance. Our project is poised to explore the robustness of the pretrained models, like Mistral-7B, Llama-2-7b, Microsoft/Phi-1_5, BERT, utilising Kolmogorov Complexity.
 
