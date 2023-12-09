@@ -8,6 +8,7 @@ from sklearn.preprocessing import MinMaxScaler
 from src.kckit.nid.gcdd_calculator import GCDDCalculator
 from src.kckit.nid.ncd_calculator import NCDCalculator
 from src.kckit.nid.nid_clustering import NIDHierarchicalClusterer
+from src.semantic_eval.semantic_score_evaluator import SemanticScoreEvaluator
 
 
 class AttentionsPreprocessor:
@@ -88,7 +89,7 @@ class LogTransform(AttentionsPreprocessor):
         # Apply a log transformation
         return np.log1p(attentions)
 
-class KCAttentionAnalyzer:
+class KCResultsAnalyzer:
     def __init__(self, input_file, kc_mode, output_file, nid_mod='ncd', num_clusters=11, preprocessor=ScalingPreprocessor()):
         self.input_file = input_file
         self.kc_mode = kc_mode
@@ -106,56 +107,60 @@ class KCAttentionAnalyzer:
         self.byte_preprocessor = ByteRepresentationPreprocessor()
 
     def process_results(self):
-        # Step 1: Load all outputs from the HDF5 file
-        with pd.HDFStore(self.input_file, 'r') as store:
-            all_outputs = [store[f"/results/result_{idx}"]["output"].iloc[0] for idx in range(len(store.keys()) // 2)]
+        df = pd.read_csv(self.input_file)
 
-        # Step 2: Calculate NID and cluster values for all outputs
-        output_clusterer = NIDHierarchicalClusterer(all_outputs, nid_calculator=self.nid_calculator)
-        output_clusters = output_clusterer.cluster(all_outputs, num_clusters=self.num_clusters)
+        # Calculate NID and cluster values for all outputs
+        prompts = df['prompt_text'].tolist()
+        ref_texts = df['ref_text'].tolist()
+        outputs = df['output'].tolist()
 
-        attention_results = []
-        layer_idx = 0
-        # Step 3: For each attention layer
-        while True:  # Loop until there's no more attention data
-            with pd.HDFStore(self.input_file, 'r') as store:
-                try:
-                    # Load all attention scores related to that layer
-                    all_attentions = [store[f"/attention/attention_{idx}"].loc[layer_idx].values for idx in range(len(store.keys()) // 2)]
-                except KeyError:
-                    break  # Exit the loop if there's no data for this layer
+        output_clusterer = NIDHierarchicalClusterer(outputs, nid_calculator=self.nid_calculator)
+        output_clusters = output_clusterer.cluster(outputs, num_clusters=self.num_clusters)
+        df["output_cluster"] = output_clusters[:, 0]
+        df["output_nid"] = output_clusters[:, 1]
 
-            # Calculate NID and cluster values for those attention scores
-            preprocessed_attention = self.preprocessor.preprocess(np.array(all_attentions))
-            preprocessed_attention_bytes = self.byte_preprocessor.preprocess(preprocessed_attention)
-            attention_clusterer = NIDHierarchicalClusterer(preprocessed_attention_bytes, nid_calculator=self.nid_calculator)
-            attention_clusters = attention_clusterer.cluster(preprocessed_attention_bytes, num_clusters=self.num_clusters)
+        #calculate the NID between the prompt and the reference text
+        df['prompt_ref_nid'] = df.apply(
+            lambda row: self.nid_calculator.compute_distance(row['prompt_text'], row['ref_text']), axis=1)
 
-            attention_results.append(attention_clusters)
+        #calculate the NID between the prompt and the output text
+        df['prompt_output_nid'] = df.apply(
+            lambda row: self.nid_calculator.compute_distance(row['prompt_text'], row['output']), axis=1)
 
-            layer_idx += 1
+        #calculate the NID between the reference text and the output text
+        df['ref_output_nid'] = df.apply(
+            lambda row: self.nid_calculator.compute_distance(row['ref_text'], row['output']), axis=1)
 
-        # Step 4: Merge the calculated NID and cluster values with the original data
-        self.store_results(layer_idx, output_clusters, attention_results)
+        # Initialize the evaluator
+        evaluator = SemanticScoreEvaluator()
 
-    def store_results(self, layer_count, output_clusters, attention_results):
-        with pd.HDFStore(self.input_file, 'r') as in_store:  # Load data from the input file
-            with pd.HDFStore(self.output_file, 'w') as out_store:  # 'w' mode to create/overwrite the file
-                for idx in range(len(output_clusters)):
-                    df = in_store[f"/results/result_{idx}"].copy()  # Load the original data
+        # Evaluate BERTScores
+        precision, recall, f1 = evaluator.evaluate(outputs, ref_texts)
 
-                    # Append the output cluster and NID values
-                    df["output_cluster"] = output_clusters[idx, 0]
-                    df["output_nid"] = output_clusters[idx, 1]
+        # Append the results to the DataFrame
+        df['precision'] = precision
+        df['recall'] = recall
+        df['f1'] = f1
 
-                    # Append the attention clusters and NID values for each layer
-                    for i in range(layer_count):  # Loop through all layers
-                        df[f"attention_cluster_{i}"] = attention_results[i][idx, 0]
-                        df[f"attention_nid_{i}"] = attention_results[i][idx, 1]
+        self.store_results(df)
 
-                    # Save merged data to the new HDF5 file
-                    out_store.put(f"/results/result_{idx}", df)
+    def store_results(self, df):
+        """
+               Save the results DataFrame to a CSV file.
 
+               Args:
+                   result_df (pd.DataFrame): The DataFrame containing the experiment results.
+               """
+        try:
+            # Save the DataFrame to CSV
+            df.to_csv(self.output_file, index=False)
+
+            # Logging the success message
+            print(f"Results successfully saved to {self.output_file}")
+
+        except Exception as e:
+            # Logging any error that might occur
+            print(f"Error in saving results to CSV: {str(e)}")
 
 
 def main():
@@ -165,11 +170,13 @@ def main():
     parser.add_argument("--output_file", type=str, required=True)
     args = parser.parse_args()
 
-    analyzer = KCAttentionAnalyzer(args.input_file, args.kc_mode, args.output_file)
+    analyzer = KCResultsAnalyzer(args.input_file, args.kc_mode, args.output_file)
     analyzer.process_results()
 
 
 if __name__ == "__main__":
-    ##analyzer = KCAttentionAnalyzer("../../tmp/gpt2_ncd_11_lex_over_tmpl1_snt1_100.hdf", "ncd", "../../tmp/gpt2_ncd_11_lex_over_tmpl1_snt1_100_results.hdf")
-    #analyzer.process_results()
-    main()
+    #analyzer = KCResultsAnalyzer("../../tmp/gpt2_squad_data_100x1_prt_results.csv", "ncd", "../../tmp/gpt2_squad_data_100x1_prt_out.csv")
+    #analyzer = KCResultsAnalyzer("../../tmp/t5-base_squad_data_100x1_prt_results.csv", "ncd", "../../tmp/t5-base_squad_data_100x1_prt_out.csv")
+    analyzer = KCResultsAnalyzer("../../tmp/t5-small_squad_data_100x1_prt_results.csv", "ncd", "../../tmp/t5-small_squad_data_100x1_prt_out.csv")
+    analyzer.process_results()
+    #main()

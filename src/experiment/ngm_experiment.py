@@ -10,14 +10,19 @@ from src.experiment.auto_model import AutoNGMModel
 from src.experiment.bert_model import BERTNGMModel
 from src.experiment.gpt2_model import GPT2NGMModel
 from src.experiment.mistral_model import MistralNGMModel
+from src.experiment.t5_model import T5NGMModel
 from src.experiment.ngm_model import NGMModel
 
-logging.basicConfig(filename='../logs/experiment.log', level=logging.INFO,
-                    format='%(asctime)s - %(levelname)s - %(message)s')
+MAX_NEW_TOKENS = 64
+
+logging.basicConfig(filename='../../logs/experiment.log', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 class NGMExperiment:
 
     MODEL_CLASSES = {
+        "t5-base": T5NGMModel,
+        "t5-small": T5NGMModel,
+        "t5-large": T5NGMModel,
         "gpt2": GPT2NGMModel,
         "gpt2-medium": GPT2NGMModel,
         "gpt2-large": GPT2NGMModel,
@@ -55,7 +60,7 @@ class NGMExperiment:
         self.ngm_model: NGMModel = self._initialize_model()
 
     def _initialize_model(self):
-        return NGMExperiment.MODEL_CLASSES.get(self.model_name, AutoNGMModel)(self.model_name)
+        return NGMExperiment.MODEL_CLASSES.get(self.model_name, AutoNGMModel)(self.model_name, max_new_tokens=MAX_NEW_TOKENS)
 
 
     def _load_and_sort_prompts(self):
@@ -73,83 +78,82 @@ class NGMExperiment:
         Conduct the experiment by feeding each prompt to the model, collecting attention scores,
         model outputs, and elapsed time for each prompt. Save the results to the specified output file.
         """
-        results = []
+        result_df = pd.DataFrame()
         #input  columns: id,prompt,cluster,NID
         for idx, row in self.prompts_df.iterrows():
-            prompt_id = row["id"]
+            prompt_id = row["promptId"]
             prompt_text = row["prompt"]
+            perturbation = row["perturbation"]
             cluster = row["cluster"]
             nid = row["NID"]
+            refText = row["refText"]
+            refCluster = row["refCluster"]
+            refNid = row["refNID"]
 
             # Log start of processing for this prompt
             logging.info(f"Starting processing for prompt_id: {prompt_id}, NID rank: {nid}, cluster: {cluster}")
             try:
                 result = self.infer(prompt_id, prompt_text, cluster, nid)
-                print("Processed prompt: ", prompt_text)
-                results.append(result)
+
+                #append the reference text and other info
+                result["ref_text"] = refText
+                result["ref_cluster"] = refCluster
+                result["ref_nid"] = refNid
+                result["perturbation"] = perturbation
+
+                #add columns from result to result_df
+                new_row = pd.Series(result)
+                result_df = pd.concat([result_df, pd.DataFrame([new_row])], ignore_index=True)
+                #result_df = result_df.append(new_row, ignore_index=True)
+
                 # Log end of processing for this prompt
                 logging.info(f"Finished processing for prompt_id: {prompt_id}")
             except Exception as e:
                 logging.error(f"Error processing prompt_id: {prompt_id}. Error: {str(e)}")
 
         # Save results to HDF5 format
-        self.save_results(results)
+        self.save_results_csv(result_df)
 
-    def infer(self, prompt_id, prompt_text, prompt_cluster, prompt_nid):
+    def infer(self, prompt_id, prompt_text, prompt_cluster, prompt_nid, capture_attention=False):
         # Tokenize input and collect attention scores
         start_time = time.time()
         model_result = self.ngm_model.infer(prompt_text)
         elapsed_time = time.time() - start_time
+
+        if capture_attention:
+            attentions = model_result.attentions
+        else:
+            attentions = None
 
         result = {
             "prompt_id": prompt_id,
             "prompt_text": prompt_text,
             "prompt_cluster": prompt_cluster,
             "prompt_nid": prompt_nid,
-            "attention": model_result.attentions,
+            "attention": attentions,
             "output": model_result.prediction,
             "elapsed_time": elapsed_time
         }
 
         return result
 
-    def save_results(self, results):
-        with pd.HDFStore(self.output_file, 'w') as store:
-            for idx, result in enumerate(results):
-                df = pd.DataFrame({
-                    "prompt_id": [result["prompt_id"]],
-                    "prompt_text": [result["prompt_text"]],
-                    "prompt_cluster": [result["prompt_cluster"]],
-                    "prompt_nid": [result["prompt_nid"]],
-                    "output": [result["output"]],
-                    "elapsed_time": [result["elapsed_time"]]
-                })
+    def save_results_csv(self, result_df):
+        """
+        Save the results DataFrame to a CSV file.
 
-                # Suppress the warning
-                with warnings.catch_warnings():
-                    warnings.simplefilter("ignore", category=PerformanceWarning)
-                    store.put(f"/results/result_{idx}", df)
+        Args:
+            result_df (pd.DataFrame): The DataFrame containing the experiment results.
+        """
+        try:
+            # Save the DataFrame to CSV
+            result_df.to_csv(self.output_file, index=False)
 
-                # Check if attention scores are in tuple format
-                if isinstance(result["attention"], tuple):
-                    attention_tensor = result["attention"][-1].cpu().detach().numpy()
-                else:
-                    attention_tensor = result["attention"].cpu().detach().numpy()
+            # Logging the success message
+            logging.info(f"Results successfully saved to {self.output_file}")
 
-                # Convert the 4D tensor attention scores to MultiIndex DataFrame
-                layers, heads, tokens_from, tokens_to = attention_tensor.shape
-                multi_index = pd.MultiIndex.from_product(
-                    [range(layers), range(heads), range(tokens_from), range(tokens_to)],
-                    names=['layer', 'head', 'token_from', 'token_to']
-                )
-                attention_df = pd.DataFrame(attention_tensor.reshape(-1), index=multi_index, columns=['attention_score'])
-
-                store.put(f"/attention/attention_{idx}", attention_df)
-
-    def get_attention_scores(self, prompt):
-        inputs = self.tokenizer(prompt, return_tensors='pt', truncation=True, padding=True)
-        output = self.model(**inputs)
-        return output.attentions
+        except Exception as e:
+            # Logging any error that might occur
+            logging.error(f"Error in saving results to CSV: {str(e)}")
 
 def main():
     # Argument parsing
@@ -167,4 +171,11 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    experiment = NGMExperiment(
+        "../../tmp/squad_data_100x1_prt_clustered.csv",
+        "gpt2",
+        "../../tmp/max_len_64/gpt2_squad_data_100x1_prt_results_128.csv")
+
+    experiment.run_experiment()
+
+    #main()

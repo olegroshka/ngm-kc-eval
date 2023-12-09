@@ -35,37 +35,44 @@ class PromptClusterer:
         df = pd.read_csv(input_csv)
 
         # Ensure the CSV has the expected columns
-        assert 'id' in df.columns and 'prompt' in df.columns, "Input CSV should have 'id' and 'prompt' columns."
+        assert 'promptId' in df.columns and 'prompt' in df.columns, "Input CSV should have 'id' and 'prompt' columns."
 
         # Extract prompts and process them
         prompts = df['prompt'].tolist()
+        prompt_nid_clusterer = NIDHierarchicalClusterer(prompts, self.nid_calculator)
+        prompt_nid_results = prompt_nid_clusterer.cluster(prompts, num_clusters)
 
-        nid_clusterer = NIDHierarchicalClusterer(prompts, self.nid_calculator)
+        # Add prompt cluster and NID columns to the DataFrame
+        df['cluster'] = prompt_nid_results[:, 0].astype(int)
+        df['NID'] = prompt_nid_results[:, 1]
 
-        results = nid_clusterer.cluster(prompts, num_clusters)
+        # Extract ref text and process them
+        refs = df['refText'].tolist()
+        ref_nid_clusterer = NIDHierarchicalClusterer(refs, self.nid_calculator)
+        ref_nid_results = ref_nid_clusterer.cluster(refs, num_clusters)
 
-        # Add cluster and NID columns to the DataFrame
-        df['cluster'] = results[:, 0].astype(int)
-        df['NID'] = results[:, 1]
+        # Add prompt cluster and NID columns to the DataFrame
+        df['refCluster'] = ref_nid_results[:, 0].astype(int)
+        df['refNID'] = ref_nid_results[:, 1]
 
         # Save the processed DataFrame to the output CSV
         df.to_csv(output_csv, index=False)
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Cluster prompts based on NID and save results to a CSV.")
-    parser.add_argument("input_csv", type=str, help="Path to the input CSV file containing prompts.")
-    parser.add_argument("output_csv", type=str, help="Path to save the output CSV with cluster and NID values.")
-    parser.add_argument("--nid_mod", type=str, default="ncd", choices=["ncd", "gcdd"],
-                        help="The mode of Normalized Information Distance (NID) calculator. Options are 'ncd' and 'gcdd'. Default is 'ncd'.")
-    parser.add_argument("--num_clusters", type=int, required=True, help="Desired number of clusters.")
+    #parser = argparse.ArgumentParser(description="Cluster prompts based on NID and save results to a CSV.")
+    #parser.add_argument("input_csv", type=str, help="Path to the input CSV file containing prompts.")
+    #parser.add_argument("output_csv", type=str, help="Path to save the output CSV with cluster and NID values.")
+    #parser.add_argument("--nid_mod", type=str, default="ncd", choices=["ncd", "gcdd"],
+    #                    help="The mode of Normalized Information Distance (NID) calculator. Options are 'ncd' and 'gcdd'. Default is 'ncd'.")
+    #parser.add_argument("--num_clusters", type=int, required=True, help="Desired number of clusters.")
 
-    args = parser.parse_args()
+    #args = parser.parse_args()
 
-    clusterer = PromptClusterer(nid_mod=args.nid_mod)
-    clusterer.process_prompts(args.input_csv, args.output_csv, args.num_clusters)
+    #clusterer = PromptClusterer(nid_mod=args.nid_mod)
+    #clusterer.process_prompts(args.input_csv, args.output_csv, args.num_clusters)
 
-# Demo
-#if __name__ == "__main__":
-#    clusterer = PromptClusterer(nid_mod='ncd')
-#    clusterer.process_prompts("path_to_input.csv", "path_to_output.csv", num_clusters=5)
+    # Demo
+    clusterer = PromptClusterer(nid_mod='ncd')
+    clusterer.process_prompts('../../data/SQuAD/squad_data_100x1_prt.csv', "../../tmp/squad_data_100x1_prt_clustered.csv", num_clusters=11)
+    #clusterer.process_prompts('../../data/SQuAD/squad_data_10x1_prt.csv', "../../tmp/squad_data_10x1_prt_clustered.csv", num_clusters=5)
