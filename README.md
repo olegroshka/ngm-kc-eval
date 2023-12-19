@@ -24,10 +24,6 @@ Our experiments will:
 - **Robustness Metric Computation**: We aim to construct a conceptual robustness metric that inherently situates the ML model within the realm of complexity, rather than merely applying complexity measures to isolated components. One such attempt is represented by:
 - **Training Enhancement**: Exploring the incorporation of information complexity into model training stages like pre-training and fine-tuning.
 
-Robustness Metric = f(NCD(input), NCD(attention), NCD(output))
-
-where \( f \) is a customizable function that can be adapted based on experimental observations and specific nuances of data and model behaviour.
-
 ## Concerns
 - **Model Interpretability**: While attention maps provide insight into model behaviour, their interpretation is not always straightforward.
 - **Complexity of Inputs**: Ranking inputs based solely on their Kolmogorov complexity might not always correlate with the perceived complexity from the model's perspective.
